@@ -23,8 +23,7 @@ module.exports = {
   validContext: context =>
     context.metric.type &&
     !!(
-      /value_count|top_hits/.test(context.metric.type) ||
-      context.metric.field
+      /value_count|top_hits/.test(context.metric.type) || context.metric.field
     ),
   result: (context, search) =>
     search(

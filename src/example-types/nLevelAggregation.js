@@ -75,19 +75,12 @@ module.exports = {
         results.aggregations[_.keys(results.aggregations)[0]].buckets
 
       if (context.reducers) {
-        let reducedResults = processReducers(
-          buckets,
-          context.reducers,
-          context
-        )
+        let reducedResults = processReducers(buckets, context.reducers, context)
 
         if (context.page) {
           let offset = (context.page - 1) * context.pageSize
           return {
-            results: _.drop(offset)(reducedResults).slice(
-              0,
-              context.pageSize
-            ),
+            results: _.drop(offset)(reducedResults).slice(0, context.pageSize),
             totalRecords: reducedResults.length,
           }
         }

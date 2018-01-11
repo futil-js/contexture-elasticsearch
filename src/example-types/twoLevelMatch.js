@@ -3,11 +3,7 @@ let esTwoLevel = require('./esTwoLevelAggregation').result
 
 module.exports = {
   validContext: context =>
-    !!(
-      context.key_field &&
-      context.value_field &&
-      context.key_value
-    ),
+    !!(context.key_field && context.value_field && context.key_value),
   result(context, search) {
     let filter = {
       [_.get('key_type', context) || 'term']: {
