@@ -47,7 +47,7 @@ module.exports = {
       },
     }
     _.each(agg => {
-      query.aggs[agg.key] = agg.data
+      query.aggs[agg.key] = agg.config.data
     }, context.extraAggs)
 
     if (context.filter_agg)
@@ -80,7 +80,7 @@ module.exports = {
       }
       if (context.extraAggs) {
         _.each(agg => {
-          rtn[agg.key] = results.aggregations[agg.key][agg.value_field]
+          rtn[agg.key] = results.aggregations[agg.key][agg.config.value_field]
         }, context.extraAggs)
       }
       return rtn

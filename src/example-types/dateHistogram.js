@@ -17,19 +17,23 @@ module.exports = {
       extraAggs: [
         {
           key: 'max_date',
-          value_field: 'value',
-          data: {
-            max: {
-              field: 'PO.IssuedDate',
+          config: {
+            value_field: 'value',
+            data: {
+              max: {
+                field: 'PO.IssuedDate',
+              },
             },
           },
         },
         {
           key: 'min_date',
-          value_field: 'value',
-          data: {
-            min: {
-              field: 'PO.IssuedDate',
+          config: {
+            value_field: 'value',
+            data: {
+              min: {
+                field: 'PO.IssuedDate',
+              },
             },
           },
         },
