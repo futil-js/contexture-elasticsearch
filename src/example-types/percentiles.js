@@ -11,9 +11,7 @@ module.exports = {
               field: context.field,
               keyed: context.keyed || false,
             },
-            _.get('percents', context)
-              ? { percents: context.percents }
-              : {}
+            _.get('percents', context) ? { percents: context.percents } : {}
           ),
         },
       },

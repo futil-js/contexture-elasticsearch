@@ -11,9 +11,7 @@ module.exports = {
               field: context.field,
               keyed: context.keyed || false,
             },
-            _.get('values', context)
-              ? { values: context.values }
-              : {}
+            _.get('values', context) ? { values: context.values } : {}
           ),
         },
       },
