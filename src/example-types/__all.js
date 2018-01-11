@@ -28,6 +28,6 @@ module.exports = {
   termsDelta: require('./termsDelta'),
   termsStatsHits: require('./termsStatsHits'),
   terms_stats: require('./terms_stats'),
-  twoLevelMatch: require('./twoLevelMatch'),
   text: require('./text'),
+  twoLevelMatch: require('./twoLevelMatch'),
 }
