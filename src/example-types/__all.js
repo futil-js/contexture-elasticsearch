@@ -1,6 +1,7 @@
 module.exports = {
   __all: require('./__all'),
   bool: require('./bool'),
+  cardinality: require('./cardinality'),
   date: require('./date'),
   cardinality: require('./cardinality'),
   dateHistogram: require('./dateHistogram'),
@@ -11,6 +12,7 @@ module.exports = {
   groupedMetric: require('./groupedMetric'),
   geo: require('./geo'),
   matchCardinality: require('./matchCardinality'),
+  groupedMetric: require('./groupedMetric'),
   matchStats: require('./matchStats'),
   nLevelAggregation: require('./nLevelAggregation'),
   nonzeroClusters: require('./nonzeroClusters'),
