@@ -36,11 +36,7 @@ let geo = ({
         console.error('An error occured within the geo provider: ', err)
       ),
   validContext: context =>
-    !!(
-      context.location &&
-      context.radius > 0 &&
-      context.operator
-    ),
+    !!(context.location && context.radius > 0 && context.operator),
   result: context => ({
     place: _.get('_meta.preprocessorResult.results.0', context),
   }),

@@ -40,8 +40,7 @@ describe('geo', () => {
       },
     ])
     utils.noValueContexts(geo)([
-      {
-      },
+      {},
       {
         location: false,
         radius: 10,
@@ -142,8 +141,7 @@ describe('geo', () => {
       },
     ])
     utils.noValidContexts(geo)([
-      {
-      },
+      {},
       {
         location: false,
         radius: 10,

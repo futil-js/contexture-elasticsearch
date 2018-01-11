@@ -5,8 +5,7 @@ let dateMath = require('@elastic/datemath')
 let esTwoLevel = require('./esTwoLevelAggregation').result
 
 module.exports = {
-  validContext: context =>
-    context.key_field && context.value_field,
+  validContext: context => context.key_field && context.value_field,
   result(context, search) {
     let payload = {
       key_type: 'date_histogram',
