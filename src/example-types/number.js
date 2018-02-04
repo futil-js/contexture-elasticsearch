@@ -26,8 +26,8 @@ module.exports = {
         [field]: _.pickBy(_.isNumber, {
           gte: boundaryFilter(min),
           lte: boundaryFilter(max),
-        })
-      }
+        }),
+      },
     }
 
     let baseStatistical = {
@@ -47,13 +47,13 @@ module.exports = {
         aggs: {
           range_filter: {
             filter: rangeFilter,
-            aggs: baseStatistical
+            aggs: baseStatistical,
           },
         },
       })
     } else {
       statisticalResult = await search({
-        aggs: baseStatistical
+        aggs: baseStatistical,
       })
     }
 
@@ -65,14 +65,14 @@ module.exports = {
               [field]: _.pickBy(_.isNumber, {
                 gte: boundaryFilter(min),
                 lte: boundaryFilter(max),
-              })
-            }
+              }),
+            },
           },
           aggs: {
             all_percentiles: {
               percentiles: {
                 field,
-                percents: [0, 0.5, 99.5, 100]
+                percents: [0, 0.5, 99.5, 100],
               },
             },
           },
@@ -80,8 +80,13 @@ module.exports = {
       },
     })
 
-    let percentiles = _.get('aggregations.range_filter.all_percentiles.values', percentilesResult)
-    let statistical = zoomIn ? _.get('aggregations.range_filter.statistical', statisticalResult) : _.get('aggregations.statistical', statisticalResult)
+    let percentiles = _.get(
+      'aggregations.range_filter.all_percentiles.values',
+      percentilesResult
+    )
+    let statistical = zoomIn
+      ? _.get('aggregations.range_filter.statistical', statisticalResult)
+      : _.get('aggregations.statistical', statisticalResult)
 
     let interval =
       Math.round(Math.abs(statistical.max - statistical.min) / 40) || 1
@@ -104,13 +109,13 @@ module.exports = {
           aggs: {
             range_filter: {
               filter: rangeFilter,
-              aggs: histogramBase
+              aggs: histogramBase,
             },
           },
         })
       } else {
         histogramResult = await search({
-          aggs: histogramBase
+          aggs: histogramBase,
         })
       }
 
@@ -119,7 +124,9 @@ module.exports = {
           value: Math.round(entry.key),
           count: entry.doc_count,
         }),
-        zoomIn ? _.get('aggregations.range_filter.values.buckets', histogramResult) : _.get('aggregations.values.buckets', histogramResult)
+        zoomIn
+          ? _.get('aggregations.range_filter.values.buckets', histogramResult)
+          : _.get('aggregations.values.buckets', histogramResult)
       )
     }
 
@@ -133,4 +140,3 @@ module.exports = {
     }
   },
 }
-
