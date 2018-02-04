@@ -1,3 +1,6 @@
+### 0.6.1
+* Improved number type by providing additional feedback as filtered range aggregations.
+
 ### 0.6.0
 * Improved number type by providing feedback as statistics and histogram results.
 
