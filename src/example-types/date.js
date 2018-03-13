@@ -37,9 +37,11 @@ module.exports = {
     let lte = to
 
     let getDateIfValid = x => {
-      let isValid = moment.utc(new Date(x)).isValid();
+      let isValid = moment.utc(new Date(x)).isValid()
       if (isValid) {
-        return context.isoFormat ? moment.utc(new Date(x)).toISOString() : moment.utc(new Date(x)).format(format)
+        return context.isoFormat
+          ? moment.utc(new Date(x)).toISOString()
+          : moment.utc(new Date(x)).format(format)
       }
       return false
     }
