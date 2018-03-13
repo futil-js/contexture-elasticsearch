@@ -7,24 +7,26 @@ module.exports = {
   filter(context) {
     let from = context.from
     let to = context.to
+    let format = 'YYYY-MM-DD'
+
     if (context.useDateMath) {
       if (from === 'thisQuarter') {
         from = moment()
           .quarter(moment().quarter())
           .startOf('quarter')
-          .format('YYYY-MM-DD')
+          .format(format)
         to = `${from}||+3M-1d/d`
       } else if (from === 'lastQuarter') {
         from = moment()
           .quarter(moment().quarter() - 1)
           .startOf('quarter')
-          .format('YYYY-MM-DD')
+          .format(format)
         to = `${from}||+3M-1d/d`
       } else if (from === 'nextQuarter') {
         from = moment()
           .quarter(moment().quarter() + 1)
           .startOf('quarter')
-          .format('YYYY-MM-DD')
+          .format(format)
         to = `${from}||+3M-1d/d`
       }
       from = datemath.parse(from)
@@ -33,9 +35,13 @@ module.exports = {
     let gte = from
     let lte = to
 
-    let getDateIfValid = x =>
-      moment.utc(new Date(x)).isValid() &&
-      moment.utc(new Date(x)).format('YYYY-MM-DD')
+    let getDateIfValid = x => {
+      let isValid = moment.utc(new Date(x)).isValid();
+      if (isValid) {
+        return context.isoFormat ? moment.utc(new Date(x)).toISOString() : moment.utc(new Date(x)).format(format)
+      }
+      return false
+    }
 
     if (!context.useRaw) {
       gte = getDateIfValid(from)

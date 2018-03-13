@@ -182,4 +182,23 @@ describe('date/filter', () => {
       },
     })
   })
+  it('should handle isoFormat', () => {
+    expect(
+      date.filter({
+        type: 'date',
+        field: 'test',
+        from: '03/03/03 10:23',
+        to: '03/03/03 11:53',
+        isoFormat: true,
+      })
+    ).to.deep.equal({
+      range: {
+        test: {
+          gte: '2003-03-03T15:23:00.000Z',
+          lte: '2003-03-03T16:53:00.000Z',
+          format: 'dateOptionalTime',
+        },
+      },
+    })
+  })
 })
