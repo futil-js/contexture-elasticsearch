@@ -26,6 +26,7 @@ module.exports = {
     }
     if (context.include || context.exclude) result._source = {}
     if (context.include) result._source.includes = context.include
+    if (context.forceInclude) result._source.includes = _.union(_.castArray(schema.forceInclude), _.castArray(result._source.includes))
     if (context.exclude) result._source.excludes = context.exclude
     let highlight =
       _.getOr(true, 'highlight', context) && schema.elasticsearch.highlight

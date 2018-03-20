@@ -84,6 +84,21 @@ describe('results', () => {
     delete context.include
     return
   })
+  it('should be able to filter fields with forceInclude', () => {
+    F.extendOn(context, { include: 'field', forceInclude: ['field', 'anotherField', 'aThirdField'] })
+    resultsTest(context, [
+      _.extend(expectedCalls[0], {
+        _source: {
+          includes: ['field', 'anotherField', 'aThirdField'],
+        },
+        sort: {
+          _score: ['field', 'anotherField', 'aThirdField'],
+        },
+      }),
+    ])
+    delete context.include
+    return
+  })
   it('should be able to filter fields with exclude', () => {
     F.extendOn(context, { exclude: 'field' })
     resultsTest(context, [
