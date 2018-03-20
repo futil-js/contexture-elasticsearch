@@ -85,7 +85,10 @@ describe('results', () => {
     return
   })
   it('should be able to filter fields with forceInclude', () => {
-    F.extendOn(context, { include: 'field', forceInclude: ['field', 'anotherField', 'aThirdField'] })
+    F.extendOn(context, {
+      include: 'field',
+      forceInclude: ['field', 'anotherField', 'aThirdField'],
+    })
     resultsTest(context, [
       _.extend(expectedCalls[0], {
         _source: {
