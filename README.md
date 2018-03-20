@@ -287,6 +287,7 @@ config: {
     order: 'sum',
     sortDir: 'desc',
     include: ['<field1>', '<field2>'],  // // Optional. Which fields to include in the summary.
+    forceInclude: ['<field1>', '<field2>'],  // // Optional. Which fields to extend to the include fields.
     details_include: ['<fieldToIncludeInDetails>']  // Optional. Which detail fields to include in the details section
 }
 ```

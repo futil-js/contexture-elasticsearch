@@ -1,4 +1,6 @@
-﻿### 0.7.2
+﻿### 0.7.3
+* Beside include, now we also have forceInclude, which allows you to extend and override the provided includes.
+### 0.7.2
 * If includeZeroes, facet should make another search for it's cardinality with query match_all.
 ### 0.7.1
 * Using combinatorics of the received words on regexp includes if optionsFilter is present on the facet example type.
