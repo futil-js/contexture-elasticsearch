@@ -1,4 +1,6 @@
-﻿### 0.9.0
+﻿### 0.9.1
+* Use raw field names for term stats types.
+### 0.9.0
 * Added `tagsQuery` type.
 ### 0.8.5
 * Number types will now return extended instead of standard stats.

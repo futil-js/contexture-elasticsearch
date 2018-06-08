@@ -1,12 +1,11 @@
 let _ = require('lodash/fp')
 let F = require('futil-js')
 let { buildRegexQueryForWords } = require('../regex')
-let { getField } = require('../fields')
 
 let breadthFirstBucketSwitch = 500000
 let getAggregationObject = (config, schema) => ({
   terms: {
-    field: getField(schema, config.key_field),
+    field: config.key_field,
     size: config.size || 10,
     order: {
       [`Stats.${config.order || 'sum'}`]: config.sortDir || 'desc',
@@ -35,7 +34,7 @@ module.exports = {
     let filter
     let isDetails = context.details_key_field && context.details_value_field
     if (context.filter) {
-      let rawFieldName = getField(schema, context.key_field)
+      let rawFieldName = context.key_field
       filter = buildRegexQueryForWords(rawFieldName, false)(context.filter)
     }
     let request = {
