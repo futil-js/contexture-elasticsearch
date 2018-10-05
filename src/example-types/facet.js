@@ -2,6 +2,7 @@ let _ = require('lodash/fp')
 let F = require('futil-js')
 let { buildRegexQueryForWords, buildRegexForWords } = require('../regex')
 let { getField } = require('../fields')
+let { ObjectID } = require('mongodb')
 
 module.exports = {
   hasValue: context => _.get('values.length', context),
@@ -29,6 +30,10 @@ module.exports = {
           filter: result,
         },
       }
+    }
+
+    if (context.isMongoId) {
+      result.terms[field] = _.map(ObjectID, result.terms[field])
     }
 
     return result

@@ -2,6 +2,8 @@ let _ = require('lodash/fp')
 let facet = require('../../src/example-types/facet')
 let sequentialResultTest = require('./testUtils').sequentialResultTest
 let { expect } = require('chai')
+let { ObjectID } = require('mongodb')
+
 let facetTest = sequentialResultTest([
   {
     aggregations: {
@@ -434,4 +436,18 @@ describe('facet', () => {
         ]
       ))
   })
+  it('isMongoId', () =>
+    expect(
+      facet.filter({
+        key: 'test',
+        type: 'facet',
+        field: 'testField',
+        values: ['5a4ea8052c635b002ade8e45', '5a4ea8052c635b002ade8e45'],
+        isMongoId: true,
+      })
+    ).to.deep.equal({
+      terms: {
+        'testField.untouched': [ObjectID('5a4ea8052c635b002ade8e45'), ObjectID('5a4ea8052c635b002ade8e45')],
+      },
+  }))
 })
