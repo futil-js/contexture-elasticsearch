@@ -447,7 +447,10 @@ describe('facet', () => {
       })
     ).to.deep.equal({
       terms: {
-        'testField.untouched': [ObjectID('5a4ea8052c635b002ade8e45'), ObjectID('5a4ea8052c635b002ade8e45')],
+        'testField.untouched': [
+          ObjectID('5a4ea8052c635b002ade8e45'),
+          ObjectID('5a4ea8052c635b002ade8e45'),
+        ],
       },
-  }))
+    }))
 })
