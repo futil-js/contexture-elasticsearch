@@ -1,4 +1,7 @@
-﻿# 0.11.0
+﻿# 0.12.0
+* Added support for ObjectIDs on the facet example tyoe.
+
+# 0.11.0
 * Additional highlighted fields should include fields that are missing from the result include array.
 
 # 0.10.2
