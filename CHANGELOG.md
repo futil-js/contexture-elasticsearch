@@ -1,3 +1,6 @@
+# 0.26.1
+* test
+
 # 0.26.0
 * fix the npm version issue
 
