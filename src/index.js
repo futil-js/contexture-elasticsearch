@@ -58,12 +58,8 @@ let ElasticsearchProvider = (config = { request: {} }) => ({
       let { body } = await search(request, requestOptions)
       response = body
     } catch (e) {
-      response = e
       node.error = e.meta.body.error
-      throw {
-        message: `${e}`,
-        ...e.meta.body.error,
-      }
+      throw e
     }
 
     // Log Request

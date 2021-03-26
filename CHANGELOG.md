@@ -1,3 +1,6 @@
+# 1.1.3
+* Throw the raw error response when elasticsearch retruns an error
+
 # 1.1.2
 * Elasticsearch error response being omitted from thrown error. This was intended to be refactored as part of v1 but was never completed. This change brings back the previous behavior until the refactor is able to be completed.
 
