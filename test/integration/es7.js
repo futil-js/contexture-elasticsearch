@@ -8,14 +8,14 @@ let elasticsearch = require('@elastic/elasticsearch')
 let AgentKeepAlive = require('agentkeepalive')
 
 describe('Integration Tests', () => {
-  it.skip('should work?', async function() {
+  it('should work?', async function() {
     this.timeout(10000)
     // Setup
     let getClient = _.memoize(
       () =>
         new elasticsearch.Client({
           node:
-            'http://test-elasticsearch-master.default.svc.cluster.local:9200',
+            'http://localhost:9200',
           // apiVersion: '6.3',
 
           // This is an example config, see the elasticsearch js docs for more
