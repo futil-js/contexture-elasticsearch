@@ -14,8 +14,7 @@ describe('Integration Tests', () => {
     let getClient = _.memoize(
       () =>
         new elasticsearch.Client({
-          node:
-            'http://localhost:9200',
+          node: 'http://localhost:9200',
           // apiVersion: '6.3',
 
           // This is an example config, see the elasticsearch js docs for more
