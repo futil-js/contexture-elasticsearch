@@ -1,3 +1,6 @@
+#1.2.1
+* Pass the headers in the manner expected by the elastic client
+
 #1.2.0
 * Add last1Day and last1Hour to dateMath util
 
