@@ -5,8 +5,9 @@ let { expect } = require('chai')
 describe('Core Provider', () => {
   it('groupCombinator should return a query joining filters by group.join', () => {
     expect(
-      provider({ getClient() {} })
-      .groupCombinator({ join: 'or' }, ['Anything works'])
+      provider({ getClient() {} }).groupCombinator({ join: 'or' }, [
+        'Anything works',
+      ])
     ).to.eql({
       bool: {
         should: ['Anything works'],
@@ -14,8 +15,8 @@ describe('Core Provider', () => {
       },
     })
     expect(
-      provider({ getClient() {} })
-      .groupCombinator({}, ['Anything works'])).to.eql({
+      provider({ getClient() {} }).groupCombinator({}, ['Anything works'])
+    ).to.eql({
       bool: {
         must: ['Anything works'],
       },
@@ -38,12 +39,12 @@ describe('Core Provider', () => {
     provider({
       getClient: () => client,
     })
-    .runSearch({}, node, schema, { query_string }, {})
-    .then(() =>
-      expect(
-        client.msearch.getCalls(0)[0].args[0].body.query.constant_score.filter
-      ).to.eql({ query_string })
-    )
+      .runSearch({}, node, schema, { query_string }, {})
+      .then(() =>
+        expect(
+          client.msearch.getCalls(0)[0].args[0].body.query.constant_score.filter
+        ).to.eql({ query_string })
+      )
   })
   it('runSearch should not wrap queries in constant_score if no query is given', () => {
     const client = {
@@ -56,10 +57,12 @@ describe('Core Provider', () => {
     provider({
       getClient: () => client,
     })
-    .runSearch({}, node, schema, null, {})
-    .then(() =>
-      expect(client.msearch.getCalls(0)[0].args[0].body).to.eql({ query: null })
-    )
+      .runSearch({}, node, schema, null, {})
+      .then(() =>
+        expect(client.msearch.getCalls(0)[0].args[0].body).to.eql({
+          query: null,
+        })
+      )
   })
   it('runSearch should not wrap queries in constant_score if sort._score is present', () => {
     const client = {
@@ -77,16 +80,18 @@ describe('Core Provider', () => {
 
     provider({
       getClient: () => client,
-    }).runSearch(
-      {},
-      node,
-      schema,
-      { query_string },
-      { sort: { _score: 'desc' } }
-    ).then(() =>
-      expect(client.msearch.getCalls(0)[0].args[0].body.query).to.eql({
-        query_string,
-      })
-    )
+    })
+      .runSearch(
+        {},
+        node,
+        schema,
+        { query_string },
+        { sort: { _score: 'desc' } }
+      )
+      .then(() =>
+        expect(client.msearch.getCalls(0)[0].args[0].body.query).to.eql({
+          query_string,
+        })
+      )
   })
 })
