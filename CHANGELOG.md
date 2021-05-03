@@ -1,3 +1,6 @@
+#1.3.0
+* Multi-Search Pool: batching requests with msearch API
+
 #1.2.0
 * Add last1Day and last1Hour to dateMath util
 

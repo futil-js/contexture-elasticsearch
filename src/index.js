@@ -1,34 +1,37 @@
 let _ = require('lodash/fp')
 let deterministic_stringify = require('json-stable-stringify')
 let { getESSchemas } = require('./schema')
+let multiSearchPool = require('./utils/multiSearchPool')
 
 let constantScore = filter => ({ constant_score: { filter } })
 
 // Deterministic ordering of JSON keys for request cache optimization
 let stableKeys = x => JSON.parse(deterministic_stringify(x))
 
-let ElasticsearchProvider = (config = { request: {} }) => ({
-  types: config.types,
-  groupCombinator(group, filters) {
-    let join = {
-      and: 'must',
-      or: 'should',
-      not: 'must_not',
-    }[group.join || 'and']
+let ElasticsearchProvider = (config = { request: {} }) => {
+  let multiSearch = multiSearchPool(config)
+  return ({
+    types: config.types,
+    groupCombinator(group, filters) {
+      let join = {
+        and: 'must',
+        or: 'should',
+        not: 'must_not',
+      }[group.join || 'and']
 
-    return {
-      bool: {
-        [join]: filters,
-        ...(join === 'should' && { minimum_should_match: 1 }),
-      },
-    }
-  },
-  async runSearch({ requestOptions } = {}, node, schema, filters, aggs) {
-    let { scroll, scrollId } = node
-    let request = scrollId
-      ? // If we have scrollId then keep scrolling, no query needed
+      return {
+        bool: {
+          [join]: filters,
+          ...(join === 'should' && { minimum_should_match: 1 }),
+        },
+      }
+    },
+    async runSearch({ requestOptions } = {}, node, schema, filters, aggs) {
+      let { scroll, scrollId } = node
+      let request = scrollId
+        ? // If we have scrollId then keep scrolling, no query needed
         { scroll: scroll === true ? '60m' : scroll, scrollId }
-      : // Deterministic ordering of JSON keys for request cache optimization
+        : // Deterministic ordering of JSON keys for request cache optimization
         stableKeys({
           index: schema.elasticsearch.index,
           // Scroll support (used for bulk export)
@@ -47,31 +50,34 @@ let ElasticsearchProvider = (config = { request: {} }) => ({
           },
         })
 
-    let client = config.getClient()
-    // If we have a scrollId, use a different client API method
-    // The new elasticsearch client uses `this`, so we can just pass aroud `client.search` :(
-    let search = scrollId
-      ? (...args) => client.scroll(...args)
-      : (...args) => client.search(...args)
-    let response
-    try {
-      let { body } = await search(request, requestOptions)
-      response = body
-    } catch (e) {
-      response = e
-      node.error = e.meta.body.error
-      throw {
-        message: `${e}`,
-        ...e.meta.body.error,
+      let client = config.getClient()
+      // If we have a scrollId, use a different client API method
+      // The new elasticsearch client uses `this`, so we can just pass aroud `client.search` :(
+      let search = scrollId
+        ? (...args) => client.scroll(...args)
+        : !scroll && _.isEmpty(requestOptions)
+          ? multiSearch
+          : (...args) => client.search(...args)
+      let response
+      try {
+        let { body } = await search(request, requestOptions)
+        response = body
+      } catch (e) {
+        response = e
+        node.error = e.meta.body.error
+        throw {
+          message: `${e}`,
+          ...e.meta.body.error,
+        }
       }
-    }
 
-    // Log Request
-    node._meta.requests.push({ request, requestOptions, response })
+      // Log Request
+      node._meta.requests.push({ request, requestOptions, response })
 
-    return response
-  },
-  getSchemas: () => getESSchemas(config.getClient()),
-})
+      return response
+    },
+    getSchemas: () => getESSchemas(config.getClient()),
+  })
+}
 
 module.exports = ElasticsearchProvider
