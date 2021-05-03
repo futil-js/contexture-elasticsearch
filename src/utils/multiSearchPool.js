@@ -2,19 +2,20 @@ let _ = require('lodash/fp')
 let F = require('futil')
 
 let scheduled = []
-let clearScheduled = () => {scheduled = []}
+let clearScheduled = () => {
+  scheduled = []
+}
 let schedule = cb => {
   if (scheduled.length === 0) {
     // setImmediate to schedule behind current I/O event callbacks
     // so we can batch all available requests in one multi-search
-    setImmediate(() =>
-      _.over([clearScheduled, ...scheduled])())
+    setImmediate(() => _.over([clearScheduled, ...scheduled])())
   }
 
   scheduled.push(cb)
 }
 
-let multiSearchPool = (config)=> {
+let multiSearchPool = config => {
   let {
     searchConcurrency: maxConcurrency = 1000,
     searchBatchSize: maxBatchSize = 100,
@@ -30,7 +31,7 @@ let multiSearchPool = (config)=> {
 
     let defer = F.defer()
 
-    pendingRequests.push({request, defer})
+    pendingRequests.push({ request, defer })
 
     return defer.promise
   }
@@ -53,29 +54,23 @@ let multiSearchPool = (config)=> {
 
     maybeSchedule() // if this batch doesn't include all the requests
 
-    client.msearch({
-      body: _.flatMap(({request: {index, body}}) =>
-        [{index}, body]
-      )(
-        requests
-      )
-    }).then(({body}) => {
-      // release some concurrency slots
-      concurrency -= length
-      maybeSchedule()
+    client
+      .msearch({
+        body: _.flatMap(({ request: { index, body } }) => [{ index }, body])(
+          requests
+        ),
+      })
+      .then(({ body }) => {
+        // release some concurrency slots
+        concurrency -= length
+        maybeSchedule()
 
-      F.eachIndexed(
-        (result, i) => {
+        F.eachIndexed((result, i) => {
           let defer = requests[i].defer
-          if (result.error)
-            defer.reject({meta: {body: result}})
-          else
-            defer.resolve({body: result})
-        }
-      )(
-        body.responses
-      )
-    })
+          if (result.error) defer.reject({ meta: { body: result } })
+          else defer.resolve({ body: result })
+        })(body.responses)
+      })
   }
 
   return search

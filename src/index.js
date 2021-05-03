@@ -10,7 +10,7 @@ let stableKeys = x => JSON.parse(deterministic_stringify(x))
 
 let ElasticsearchProvider = (config = { request: {} }) => {
   let multiSearch = multiSearchPool(config)
-  return ({
+  return {
     types: config.types,
     groupCombinator(group, filters) {
       let join = {
@@ -30,25 +30,25 @@ let ElasticsearchProvider = (config = { request: {} }) => {
       let { scroll, scrollId } = node
       let request = scrollId
         ? // If we have scrollId then keep scrolling, no query needed
-        { scroll: scroll === true ? '60m' : scroll, scrollId }
+          { scroll: scroll === true ? '60m' : scroll, scrollId }
         : // Deterministic ordering of JSON keys for request cache optimization
-        stableKeys({
-          index: schema.elasticsearch.index,
-          // Scroll support (used for bulk export)
-          ...(scroll && { scroll: scroll === true ? '2m' : scroll }),
-          body: {
-            // Wrap in constant_score when not sorting by score to avoid wasting time on relevance scoring
-            query:
-              filters && !_.has('sort._score', aggs)
-                ? constantScore(filters)
-                : filters,
-            // If there are aggs, skip search results
-            ...(aggs.aggs && { size: 0 }),
-            // Sorting by _doc is more efficient for scrolling since it won't waste time on any sorting
-            ...(scroll && { sort: ['_doc'] }),
-            ...aggs,
-          },
-        })
+          stableKeys({
+            index: schema.elasticsearch.index,
+            // Scroll support (used for bulk export)
+            ...(scroll && { scroll: scroll === true ? '2m' : scroll }),
+            body: {
+              // Wrap in constant_score when not sorting by score to avoid wasting time on relevance scoring
+              query:
+                filters && !_.has('sort._score', aggs)
+                  ? constantScore(filters)
+                  : filters,
+              // If there are aggs, skip search results
+              ...(aggs.aggs && { size: 0 }),
+              // Sorting by _doc is more efficient for scrolling since it won't waste time on any sorting
+              ...(scroll && { sort: ['_doc'] }),
+              ...aggs,
+            },
+          })
 
       let client = config.getClient()
       // If we have a scrollId, use a different client API method
@@ -56,8 +56,8 @@ let ElasticsearchProvider = (config = { request: {} }) => {
       let search = scrollId
         ? (...args) => client.scroll(...args)
         : !scroll && _.isEmpty(requestOptions)
-          ? multiSearch
-          : (...args) => client.search(...args)
+        ? multiSearch
+        : (...args) => client.search(...args)
       let response
       try {
         let { body } = await search(request, requestOptions)
@@ -77,7 +77,7 @@ let ElasticsearchProvider = (config = { request: {} }) => {
       return response
     },
     getSchemas: () => getESSchemas(config.getClient()),
-  })
+  }
 }
 
 module.exports = ElasticsearchProvider
