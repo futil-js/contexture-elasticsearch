@@ -17,8 +17,8 @@ let schedule = cb => {
 
 let multiSearchPool = config => {
   let {
-    searchConcurrency: maxConcurrency = 1000,
-    searchBatchSize: maxBatchSize = 100,
+    searchConcurrency: maxConcurrency = 100,
+    searchBatchSize: maxBatchSize = 25,
   } = config
   let client = config.getClient()
   let concurrency = 0
