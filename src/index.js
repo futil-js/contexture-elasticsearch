@@ -55,7 +55,7 @@ let ElasticsearchProvider = (config = { request: {} }) => ({
       : (...args) => client.search(...args)
     let response
     try {
-      let { body } = await search(request, requestOptions)
+      let { body } = await search(request, { headers: requestOptions })
       response = body
     } catch (e) {
       response = e
