@@ -52,7 +52,8 @@ let multiSearchPool = config => {
     // lock concurrency slots
     concurrency += length
 
-    maybeSchedule() // if this batch doesn't include all the requests
+    // if this batch didn't include all the requests
+    maybeSchedule()
 
     client
       .msearch({
@@ -63,13 +64,15 @@ let multiSearchPool = config => {
       .then(({ body }) => {
         // release some concurrency slots
         concurrency -= length
-        maybeSchedule()
 
-        F.eachIndexed((result, i) => {
-          let defer = requests[i].defer
-          if (result.error) defer.reject({ meta: { body: result } })
-          else defer.resolve({ body: result })
-        })(body.responses)
+        if (body)
+          F.eachIndexed((result, i) => {
+            let { resolve, reject } = requests[i].defer
+            if (result.error) reject({ meta: { body: result } })
+            else resolve({ body: result })
+          })(body.responses)
+
+        maybeSchedule()
       })
   }
 
