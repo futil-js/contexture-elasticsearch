@@ -22,15 +22,27 @@ let buildGroupQuery = (node, children, groupingType, schema) => {
     filter,
     // sortField can be key, count, or stat name - min, max, avg, sum as long as its in stats
     sort: { field: sortField, direction = 'desc' } = {}, // todo: support array sort for multi-level
+    extraFields = [],
   } = node
   let field = getField(schema, groupField)
   let query = {
     aggs: {
       [groupingType]: {
-        terms: {
+        ..._.isEmpty(extraFields) ?
+  
+        {        terms: {
           field,
           size,
           ...(sortField && { order: { [getSortField(sortField)]: direction } }),
+        }} : {
+          multi_terms: {
+            terms: _.map((groupField) => ({
+field: getField(schema, groupField) 
+              }), [groupField, ...extraFields]),
+                      size,
+          ...(sortField && { order: { [getSortField(sortField)]: direction } }),
+        }} : {
+          }
         },
         ...children,
       },
