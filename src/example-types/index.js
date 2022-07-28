@@ -20,6 +20,7 @@ module.exports = {
   fieldValuesDelta: require('./metricGroups/fieldValuesDelta'),
 
   // Metric Groups
+  tagsQueryGroupStats: require('./metricGroups/tagsQueryGroupStats'),
   fieldValuesGroupStats: require('./metricGroups/fieldValuesGroupStats'),
   percentilesGroupStats: require('./metricGroups/percentilesGroupStats'),
   dateIntervalGroupStats: require('./metricGroups/dateIntervalGroupStats'),
