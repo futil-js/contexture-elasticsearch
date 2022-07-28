@@ -81,9 +81,9 @@ let filter = ({ tags, join, field, exact }) => ({
   },
 })
 
-let buildResultQuery = node => ({
+let buildResultQuery = (node, children = {}, groupsKey = 'tags') => ({
   aggs: {
-    tags: {
+    [groupsKey]: {
       filters: {
         filters: F.arrayToObject(
           _.get('word'),
@@ -91,6 +91,7 @@ let buildResultQuery = node => ({
           node.tags
         ),
       },
+      ...children
     },
   },
 })
