@@ -31,22 +31,19 @@ let aggsForValues = (node, schema) =>
     }))
   )(node)
 
-let maybeWrapWithFilterAgg = ({ query, filters, skipFilters, aggName }) =>
-  _.isEmpty(filters) && _.isEmpty(skipFilters)
-    ? query
-    : {
-        aggs: {
-          [aggName]: {
-            filter: {
-              bool: {
-                ...(!_.isEmpty(filters) && { must: filters }),
-                ...(!_.isEmpty(skipFilters) && { must_not: skipFilters }),
-              },
-            },
-            ...query,
-          },
+let wrapWithFilterAgg = ({ query, filters, skipFilters, aggName }) => ({
+  aggs: {
+    [aggName]: {
+      filter: {
+        bool: {
+          ...(!_.isEmpty(filters) && { must: filters }),
+          ...(!_.isEmpty(skipFilters) && { must_not: skipFilters }),
         },
-      }
+      },
+      ...query,
+    },
+  },
+})
 
 // Builds filters for drilldowns
 let drilldownFilters = async ({
@@ -124,82 +121,103 @@ let getSortField = ({ columnValues = [], valueProp, valueIndex } = {}) =>
     valueProp,
   ])
 
-let buildQuery = async (node, schema, getStats) => {
-  let pagination = node.pagination || {}
-  let drilldowns = pagination.drilldown || []
+// buildGroupQuery applied to a list of groups
+let buildNestedGroupQuery = (node, schema, getStats) => async ({
+  statsAggs,
+  groups,
+  groupingType,
+  sort,
+  shouldMergeStatsAggs,
+}) => {
+  // Generate filters from sort column values
+  let sortAgg = await getSortAgg({ node, sort, schema, getStats })
+  let sortField = getSortField(sort)
+  let query = await _.reduce(
+    async (children, group) => {
+      // Defaulting the group size to be 10
+      if (!group.size) group.size = 10
+      // Calculating subtotal metrics at each group level if not drilling down
+      // Support for per group stats could also be added here - merge on another stats agg blob to children based on group.stats/statsField or group.values
+      if (!_.get('pagination.drilldown', node))
+        children = _.merge(await children, statsAggs)
+      // At each level, add a filters bucket agg and nested metric to enable sorting
+      // For example, to sort by Sum of Price for 2022, add a filters agg for 2022 and nested metric for sum of price so we can target it
+      // As far as we're aware, there's no way to sort by the nth bucket - but we can simulate that by using filters to create a discrete agg for that bucket
+      if (!_.isEmpty(sort)) {
+        children = _.merge(sortAgg, await children)
+        // Set `sort` on the group, deferring to each grouping type to handle it
+        // The API of `{sort: {field, direction}}` is respected by fieldValues and can be added to others
+        group.sort = { field: sortField, direction: sort.direction }
+      }
+      let build = lookupTypeProp(_.identity, 'buildGroupQuery', group.type)
+      return build(group, await children, groupingType, schema, getStats)
+    },
+    statsAggs,
+    _.reverse(groups)
+  )
+  if (shouldMergeStatsAggs) query = _.merge(query, statsAggs)
+  return query
+}
+
+let buildInitialQuery = async (node, schema, getStats) => {
+  let build = buildNestedGroupQuery(node, schema, getStats)
+  let statsAggs = await build({
+    statsAggs: { aggs: aggsForValues(node.values, schema) },
+    groups: node.columns,
+    groupingType: 'columns',
+    shouldMergeStatsAggs: node.columns,
+  })
+  return build({
+    statsAggs,
+    groups: node.rows,
+    groupingType: 'rows',
+    sort: node.sort,
+    shouldMergeStatsAggs:
+      _.isEmpty(_.get('pagination.skip', node)) &&
+      _.isEmpty(_.get('pagination.drilldown', node)),
+  })
+}
+
+let buildDrilldownQuery = async (node, schema, getStats) => {
   // Don't consider deeper levels than +1 the current drilldown
   // This allows avoiding expansion until ready
   // Opt out with falsey drilldown
-  let rows = pagination.drilldown
-    ? _.take(_.size(pagination.drilldown) + 1, node.rows)
-    : node.rows
-
-  let statsAggs = { aggs: aggsForValues(node.values, schema) }
-  // buildGroupQuery applied to a list of groups
-  let buildNestedGroupQuery = async (statsAggs, groups, groupingType, sort) => {
-    // Generate filters from sort column values
-    let sortAgg = await getSortAgg({ node, sort, schema, getStats })
-    let sortField = getSortField(sort)
-
-    return _.reduce(
-      async (children, group) => {
-        // Defaulting the group size to be 10
-        if (!group.size) group.size = 10
-        // Calculating subtotal metrics at each group level if not drilling down
-        // Support for per group stats could also be added here - merge on another stats agg blob to children based on group.stats/statsField or group.values
-        if (!pagination.drilldown) children = _.merge(await children, statsAggs)
-        // At each level, add a filters bucket agg and nested metric to enable sorting
-        // For example, to sort by Sum of Price for 2022, add a filters agg for 2022 and nested metric for sum of price so we can target it
-        // As far as we're aware, there's no way to sort by the nth bucket - but we can simulate that by using filters to create a discrete agg for that bucket
-        if (!_.isEmpty(sort)) {
-          children = _.merge(sortAgg, await children)
-          // Set `sort` on the group, deferring to each grouping type to handle it
-          // The API of `{sort: {field, direction}}` is respected by fieldValues and can be added to others
-          group.sort = { field: sortField, direction: sort.direction }
-        }
-        let build = lookupTypeProp(_.identity, 'buildGroupQuery', group.type)
-        return build(group, await children, groupingType, schema, getStats)
-      },
-      statsAggs,
-      _.reverse(groups)
-    )
-  }
-
-  if (node.columns)
-    statsAggs = _.merge(
-      await buildNestedGroupQuery(statsAggs, node.columns, 'columns'),
-      statsAggs
-    )
-  let query = _.merge(
-    await buildNestedGroupQuery(statsAggs, rows, 'rows', node.sort),
-    // Stamping total row metrics if not drilling data
-    _.isEmpty(drilldowns) && _.isEmpty(pagination.skip) ? statsAggs : {}
-  )
+  node.rows = _.take(_.size(node.pagination.drilldown) + 1, node.rows)
 
   let filters = await drilldownFilters({
-    drilldowns,
-    groups: rows,
-    schema,
-    getStats,
-  })
-  let skipFilters = await paginationSkipFilters({
-    drilldowns,
-    skip: pagination.skip,
-    groups: rows,
+    drilldowns: node.pagination.drilldown,
+    groups: node.rows,
     schema,
     getStats,
   })
 
-  query = maybeWrapWithFilterAgg({
+  let skipFilters = await paginationSkipFilters({
+    drilldowns: node.pagination.drilldown,
+    skip: node.pagination.skip,
+    groups: node.rows,
+    schema,
+    getStats,
+  })
+
+  let query = await buildInitialQuery(node, schema, getStats)
+
+  if (_.isEmpty(filters) && _.isEmpty(skipFilters)) return query
+
+  return wrapWithFilterAgg({
     filters,
     skipFilters,
     aggName: 'pivotFilter',
     query,
   })
+}
 
+let buildQuery = async (node, ...args) => {
+  let build = _.get('pagination.drilldown', node)
+    ? buildDrilldownQuery
+    : buildInitialQuery
+  let query = await build(node, ...args)
   // Without this, ES7+ stops counting at 10k instead of returning the actual count
   query.track_total_hits = true
-
   return query
 }
 
