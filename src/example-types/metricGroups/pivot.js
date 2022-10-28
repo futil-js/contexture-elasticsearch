@@ -161,12 +161,14 @@ let buildNestedGroupQuery = (node, schema, getStats) => async ({
 
 let buildInitialQuery = async (node, schema, getStats) => {
   let build = buildNestedGroupQuery(node, schema, getStats)
-  let statsAggs = await build({
-    statsAggs: { aggs: aggsForValues(node.values, schema) },
-    groups: node.columns,
-    groupingType: 'columns',
-    shouldMergeStatsAggs: node.columns,
-  })
+  let statsAggs = { aggs: aggsForValues(node.values, schema) }
+  if (!_.isEmpty(node.columns))
+    statsAggs = await build({
+      statsAggs,
+      groups: node.columns,
+      groupingType: 'columns',
+      shouldMergeStatsAggs: true,
+    })
   return build({
     statsAggs,
     groups: node.rows,
