@@ -87,6 +87,9 @@ let mergeResults = _.mergeWith((current, additional, prop) => {
   } else if (_.isArray(additional)) return additional
 })
 
+let findRootExpansionType = expansionType => ({ type, drilldown }) =>
+  _.isEmpty(drilldown) && type === expansionType
+
 let createPivotScope = (node, schema, getStats) => {
   /***
    COMMON VARIABLES
@@ -98,7 +101,10 @@ let createPivotScope = (node, schema, getStats) => {
    INITIALIZING
    ***/
 
-  let rootColumnsExpansion = _.find({ type: 'columns' }, expansions)
+  let rootColumnsExpansion = _.find(
+    findRootExpansionType('columns'),
+    expansions
+  )
   if (rootColumnsExpansion) {
     // to use rows expansion for the root request
     if (!rootColumnsExpansion.loaded) rootColumnsExpansion.loaded = []
@@ -112,12 +118,19 @@ let createPivotScope = (node, schema, getStats) => {
     })
 
   // adding initial root level rows expansion
-  if (!_.find({ type: 'rows' }, expansions))
-    expansions.push({
+  let rootRowsExpansionIndex = _.findIndex(
+    findRootExpansionType('rows'),
+    expansions
+  )
+  if (rootRowsExpansionIndex === -1) {
+    expansions.splice(1, 0, {
       type: 'rows',
       drilldown: [],
       loaded: false,
     })
+  } else {
+    expansions = F.moveIndex(rootRowsExpansionIndex, 1, expansions)
+  }
 
   /***
    MAKING REQUESTS

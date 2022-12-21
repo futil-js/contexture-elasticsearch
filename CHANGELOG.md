@@ -1,3 +1,6 @@
+# 1.19.0
+* [pivot] - Make sure we are checking for a root row/column expansion where drilldown is empty. If root row expansion is found make sure it is in position after root column expansion, if not found add it after root column expansion
+
 # 1.18.0
 * [pivot] New `pagination` logic for `columns` and `rows` with `drilldown`, `skip`, `include` and `expanded`
 
