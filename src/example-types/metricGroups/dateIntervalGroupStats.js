@@ -7,19 +7,20 @@ let toElasticInterval = _.flow(_.replace('fiscal', ''), _.toLower)
 
 let isFiscal = _.includes('fiscal')
 
-let fieldFiscalMappingOr = _.curry( (interval, field) =>
-  isFiscal(interval) ? `${field}.fiscal` : field)
+let fieldFiscalMappingOr = _.curry((interval, field) =>
+  isFiscal(interval) ? `${field}.fiscal` : field
+)
 
 /*
-*   hoistProps allows the fields within to be hoisted to top of mapping structure
-*   this is to avoid having issues in which this is not allowed at the same level
-*   of a filter
-*
-*   **PRETTY IGNORE: needed to not change the ${} formatting, this is done to
-*   make the script readable and have the tests pass without relying on far
-*   indented the template string it
-*/
-/* prettier-ignore */ 
+ *   hoistProps allows the fields within to be hoisted to top of mapping structure
+ *   this is to avoid having issues in which this is not allowed at the same level
+ *   of a filter
+ *
+ *   **PRETTY IGNORE: needed to not change the ${} formatting, this is done to
+ *   make the script readable and have the tests pass without relying on far
+ *   indented the template string it
+ */
+/* prettier-ignore */
 let getFiscalMappings = _.curry((toFiscalField,{field, monthOffset}) => ({
   runtime_mappings: {
     [toFiscalField(field)]: {
@@ -37,18 +38,17 @@ let getFiscalMappings = _.curry((toFiscalField,{field, monthOffset}) => ({
   },
 }))
 
-let wrapHoistProps = hoistProperties => ({hoistProps: {...hoistProperties}})
+let wrapHoistProps = hoistProperties => ({ hoistProps: { ...hoistProperties } })
 
-let drilldown = ({ field, interval, drilldown, monthOffset = 3}) => { 
+let drilldown = ({ field, interval, drilldown, monthOffset = 3 }) => {
   let fiscalOrField = fieldFiscalMappingOr(interval)
   interval = toElasticInterval(interval)
   let gte = drilldown
   let lte = moment.parseZone(drilldown).endOf(interval).format()
-  return { 
-    ...(isFiscal(fiscalOrField(field)) && 
-      wrapHoistProps(getFiscalMappings(fiscalOrField,{field, monthOffset}))
-    ),  
-    range: { [fiscalOrField(field)]: { gte, lte } } 
+  return {
+    ...(isFiscal(fiscalOrField(field)) &&
+      wrapHoistProps(getFiscalMappings(fiscalOrField, { field, monthOffset }))),
+    range: { [fiscalOrField(field)]: { gte, lte } },
   }
 }
 
@@ -64,9 +64,8 @@ let buildGroupQuery = (node, children, groupsKey) => {
    *       calendarYear2022Q4 => federalFiscalYear2023Q
    */
   return {
-    ...(isFiscal(fiscalOrField(field)) && 
-    wrapHoistProps(getFiscalMappings(fiscalOrField,{field, monthOffset}))
-    ),
+    ...(isFiscal(fiscalOrField(field)) &&
+      wrapHoistProps(getFiscalMappings(fiscalOrField, { field, monthOffset }))),
     aggs: {
       [groupsKey]: {
         date_histogram: {

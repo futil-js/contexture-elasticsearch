@@ -41,7 +41,7 @@ let ElasticsearchProvider = (config = { request: {} }) => ({
     let { searchWrapper } = config
     let { scroll, scrollId } = node
     let hoistProps = filters && filters.hoistProps
-    filters = filters && _.omit('hoistProps',filters)
+    filters = filters && _.omit('hoistProps', filters)
     let request = scrollId
       ? // If we have scrollId then keep scrolling, no query needed
         { scroll: scroll === true ? '60m' : scroll, scrollId }
@@ -52,11 +52,11 @@ let ElasticsearchProvider = (config = { request: {} }) => ({
           ...(scroll && { scroll: scroll === true ? '2m' : scroll }),
           body: {
             // Wrap in consetant_score when not sorting by score to avoid wasting time on relevance scoring
-            ...(hoistProps && {...hoistProps}),
+            ...(hoistProps && { ...hoistProps }),
             query:
-            filters && !_.has('sort._score', aggs)
+              filters && !_.has('sort._score', aggs)
                 ? constantScore(filters)
-                :  filters,
+                : filters,
             // If there are aggs, skip search results
             ...(aggs.aggs && { size: 0 }),
             // Sorting by _doc is more efficient for scrolling since it won't waste time on any sorting
