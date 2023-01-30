@@ -5,7 +5,6 @@ import { getField } from '../../utils/fields.js'
 import * as types from '../../example-types/index.js'
 import { basicSimplifyTree, and, not, or } from '../../utils/elasticDSL.js'
 import { compactMapAsync } from '../../utils/futil.js'
-import { groupStatsResult } from './groupStatUtils.js'
 
 let { getStats } = stats
 
