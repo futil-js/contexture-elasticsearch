@@ -39,7 +39,7 @@ let getFiscalMappings = _.curry((toFiscalField,{field, monthOffset}) => ({
 
 let wrapHoistProps = hoistProperties => ({hoistProps: {...hoistProperties}})
 
-let drilldown = ({ field, interval, drilldown, hoistProps={}, monthOffset = 3}) => { 
+let drilldown = ({ field, interval, drilldown, monthOffset = 3}) => { 
   let fiscalOrField = fieldFiscalMappingOr(interval)
   interval = toElasticInterval(interval)
   let gte = drilldown
