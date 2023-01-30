@@ -336,9 +336,6 @@ let createPivotScope = (node, schema, getStats) => {
     // This allows avoiding expansion until ready
     // Opt out with expandColumns / expandRows
     let query
-    
-    /* let mergeHoistProps = (hoistProps, statsAggs) =>
-      _.merge(_.getOr({}, 'hoistProps', statsAggs), hoistProps) */
    
     let axisFilters = async ({drills, axisGroup, axisName, hoistProps}) => {
       // Filtering data specified by the drilldown
