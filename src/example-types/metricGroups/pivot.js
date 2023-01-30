@@ -89,6 +89,15 @@ let mergeResults = _.mergeWith((current, additional, prop) => {
   } else if (_.isArray(additional)) return additional
 })
 
+//Functions for hoisting functionality
+let hoistProps = {}
+let removeHoistProps = _.curry(group => _.omit(['hoistProps'], group))
+let mergeHoistProps = _.curry((props, group) =>
+  _.merge(_.getOr({}, 'hoistProps', group), props)
+)
+let mergeNestedHoistProps = _.curry(_.reduce(mergeHoistProps(hoistProps), {}))
+let removeNestedHoistProps = _.curry(_.map(removeHoistProps))
+
 let createPivotScope = (node, schema, getStats) => {
   /***
    COMMON VARIABLES
@@ -324,14 +333,36 @@ let createPivotScope = (node, schema, getStats) => {
   let buildQuery = async request => {
     let columnDrills = _.getOr([], 'columns.drilldown', request)
     let rowDrills = _.getOr([], 'rows.drilldown', request)
+    hoistProps = {}
     // Don't consider deeper levels than +1 the current drilldown
     // This allows avoiding expansion until ready
     // Opt out with expandColumns / expandRows
+    let query
 
-    let hoistProps = {}
-    let mergeHoistProps = (hoistProps, statsAggs) =>
-      _.merge(_.getOr({}, 'hoistProps', statsAggs), hoistProps)
-    let removeHoistProps = statsAggs => _.omit('hoistProps', statsAggs)
+    let axisFilters = async ({ drills, axisGroup, axisName, hoistProps }) => {
+      // Filtering data specified by the drilldown
+      let drillDownFilters = await getDrilldownFilters({
+        drilldown: drills,
+        groups: axisGroup,
+      })
+      // Narrowing query down to values specified in include
+      let includeFilters = await getRequestFilters({
+        drilldown: drills,
+        values: _.get(`${axisName}.include`, request),
+        groups: axisGroup,
+      })
+      // Skipping existing values when requesting the next request
+      let skipFilters = await getRequestFilters({
+        drilldown: drills,
+        values: _.get(`${axisName}.skip`, request),
+        groups: axisGroup,
+      })
+      hoistProps = mergeNestedHoistProps(drillDownFilters)
+      hoistProps = mergeNestedHoistProps(includeFilters)
+      drillDownFilters = removeNestedHoistProps(drillDownFilters)
+      includeFilters = removeNestedHoistProps(includeFilters)
+      return [drillDownFilters, includeFilters, skipFilters, hoistProps]
+    }
 
     let columns = _.get('expanded.columns', node)
       ? node.columns
@@ -341,41 +372,20 @@ let createPivotScope = (node, schema, getStats) => {
       ? node.rows
       : _.take(_.size(rowDrills) + 1, node.rows)
 
-    // Filtering data specified by the drilldown
-    let drilldownColumnFilters = await getDrilldownFilters({
-      drilldown: columnDrills,
-      groups: columns,
-    })
-    let drilldownRowFilters = await getDrilldownFilters({
-      drilldown: rowDrills,
-      groups: rows,
-    })
-
-    // Narrowing query down to values specified in include
-    let includeColumnFilters = await getRequestFilters({
-      drilldown: columnDrills,
-      values: _.get('columns.include', request),
-      groups: columns,
-    })
-    let includeRowFilters = await getRequestFilters({
-      drilldown: rowDrills,
-      values: _.get('rows.include', request),
-      groups: rows,
-    })
-
-    // Skipping existing values when requesting the next request
-    let skipColumnFilters = await getRequestFilters({
-      drilldown: columnDrills,
-      values: _.get('columns.skip', request),
-      groups: columns,
-    })
-    let skipRowFilters = await getRequestFilters({
-      drilldown: rowDrills,
-      values: _.get('rows.skip', request),
-      groups: rows,
-    })
-
     let statsAggs = { aggs: getAggsForValues(node.values) }
+
+    let [
+      drilldownColumnFilters,
+      includeColumnFilters,
+      skipColumnFilters,
+      colHoistProps,
+    ] = await axisFilters({
+      drills: columnDrills,
+      axisGroup: columns,
+      axisName: 'columns',
+      hoistProps,
+    })
+    hoistProps = _.merge(hoistProps, colHoistProps)
 
     if (!_.isEmpty(columns)) {
       let columnsStatsAggs = await buildNestedGroupQuery(
@@ -416,10 +426,22 @@ let createPivotScope = (node, schema, getStats) => {
       'rows',
       node.sort
     )
-    let query
 
     hoistProps = mergeHoistProps(hoistProps, rowsStatsAggs)
     rowsStatsAggs = removeHoistProps(rowsStatsAggs)
+
+    let [
+      drilldownRowFilters,
+      includeRowFilters,
+      skipRowFilters,
+      rowHoistProps,
+    ] = await axisFilters({
+      drills: rowDrills,
+      axisGroup: rows,
+      axisName: 'rows',
+      hoistProps,
+    })
+    hoistProps = _.merge(hoistProps, rowHoistProps)
 
     if (request.rows.totals) {
       // adding total rows statsAggs above the rows filters
@@ -539,22 +561,41 @@ let filter = async (node, schema) => {
   }
   let { getDrilldownFilters } = createPivotScope(node, schema, getStats)
 
-  return or(
+  hoistProps = {}
+
+  let boolFilter = or(
     await compactMapAsync(
       async filter =>
         and([
-          await getDrilldownFilters({
-            drilldown: filter.rows,
-            groups: rows,
-          }),
-          await getDrilldownFilters({
-            drilldown: filter.columns,
-            groups: columns,
-          }),
+          _.map(
+            filterGroup => {
+              hoistProps = mergeHoistProps(hoistProps, filterGroup)
+              return removeHoistProps(filterGroup)
+            },
+            await getDrilldownFilters({
+              drilldown: filter.rows,
+              groups: rows,
+            })
+          ),
+          _.map(
+            filterGroup => {
+              hoistProps = mergeHoistProps(hoistProps, filterGroup)
+              return removeHoistProps(filterGroup)
+            },
+            await getDrilldownFilters({
+              drilldown: filter.columns,
+              groups: columns,
+            })
+          ),
         ]),
       filters
     )
   )
+
+  return {
+    hoistProps,
+    ...boolFilter,
+  }
 }
 
 export default {
