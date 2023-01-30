@@ -91,10 +91,12 @@ let mergeResults = _.mergeWith((current, additional, prop) => {
 
 //Functions for hoisting functionality
 let hoistProps = {}
-let removeHoistProps = group => _.omit(['hoistProps'], group)
-let mergeHoistProps = _.curry((props, group) => _.merge(_.getOr({}, 'hoistProps', group), props))
-let mergeNestedHoistProps = _.reduce(mergeHoistProps(hoistProps), {})
-let removeNestedHoistProps = _.map(removeHoistProps)
+let removeHoistProps = _.curry(group => _.omit(['hoistProps'], group))
+let mergeHoistProps = _.curry((props, group) =>
+  _.merge(_.getOr({}, 'hoistProps', group), props)
+)
+let mergeNestedHoistProps = _.curry(_.reduce(mergeHoistProps(hoistProps), {}))
+let removeNestedHoistProps = _.curry(_.map(removeHoistProps))
 
 let createPivotScope = (node, schema, getStats) => {
   /***
@@ -336,12 +338,12 @@ let createPivotScope = (node, schema, getStats) => {
     // This allows avoiding expansion until ready
     // Opt out with expandColumns / expandRows
     let query
-   
-    let axisFilters = async ({drills, axisGroup, axisName, hoistProps}) => {
+
+    let axisFilters = async ({ drills, axisGroup, axisName, hoistProps }) => {
       // Filtering data specified by the drilldown
       let drillDownFilters = await getDrilldownFilters({
         drilldown: drills,
-        groups: axisGroup
+        groups: axisGroup,
       })
       // Narrowing query down to values specified in include
       let includeFilters = await getRequestFilters({
@@ -355,13 +357,13 @@ let createPivotScope = (node, schema, getStats) => {
         values: _.get(`${axisName}.skip`, request),
         groups: axisGroup,
       })
-      hoistProps =  mergeNestedHoistProps(drillDownFilters)
+      hoistProps = mergeNestedHoistProps(drillDownFilters)
       hoistProps = mergeNestedHoistProps(includeFilters)
       drillDownFilters = removeNestedHoistProps(drillDownFilters)
       includeFilters = removeNestedHoistProps(includeFilters)
       return [drillDownFilters, includeFilters, skipFilters, hoistProps]
     }
-    
+
     let columns = _.get('expanded.columns', node)
       ? node.columns
       : _.take(_.size(columnDrills) + 1, node.columns)
@@ -372,8 +374,17 @@ let createPivotScope = (node, schema, getStats) => {
 
     let statsAggs = { aggs: getAggsForValues(node.values) }
 
-    let [drilldownColumnFilters, includeColumnFilters, skipColumnFilters, colHoistProps] = 
-      await axisFilters({drills: columnDrills, axisGroup: columns, axisName: 'columns', hoistProps})
+    let [
+      drilldownColumnFilters,
+      includeColumnFilters,
+      skipColumnFilters,
+      colHoistProps,
+    ] = await axisFilters({
+      drills: columnDrills,
+      axisGroup: columns,
+      axisName: 'columns',
+      hoistProps,
+    })
     hoistProps = _.merge(hoistProps, colHoistProps)
 
     if (!_.isEmpty(columns)) {
@@ -419,8 +430,17 @@ let createPivotScope = (node, schema, getStats) => {
     hoistProps = mergeHoistProps(hoistProps, rowsStatsAggs)
     rowsStatsAggs = removeHoistProps(rowsStatsAggs)
 
-    let [drilldownRowFilters, includeRowFilters, skipRowFilters, rowHoistProps] = 
-      await axisFilters({drills: rowDrills, axisGroup: rows, axisName: 'rows', hoistProps})
+    let [
+      drilldownRowFilters,
+      includeRowFilters,
+      skipRowFilters,
+      rowHoistProps,
+    ] = await axisFilters({
+      drills: rowDrills,
+      axisGroup: rows,
+      axisName: 'rows',
+      hoistProps,
+    })
     hoistProps = _.merge(hoistProps, rowHoistProps)
 
     if (request.rows.totals) {
@@ -540,46 +560,39 @@ let filter = async (node, schema) => {
     throw 'Pivot filtering does not support running searches to build filters yet'
   }
   let { getDrilldownFilters } = createPivotScope(node, schema, getStats)
- 
+
   hoistProps = {}
 
-  let rowFilters = await compactMapAsync(
+  let boolFilter =  or(
+   await compactMapAsync(
     async filter =>
-      await getDrilldownFilters({
-        drilldown: filter.rows,
-        groups: rows,
-      }),
-    filters) 
+        and([
+          _.map(
+            (filterGroup) => {
+              hoistProps = mergeHoistProps(hoistProps, filterGroup)
+              return removeHoistProps(filterGroup)
+            },
+            await getDrilldownFilters({
+              drilldown: filter.rows,
+              groups: rows,
+            })
+          ),
+          _.map(filterGroup => {
+              hoistProps = mergeHoistProps(hoistProps, filterGroup)
+              return removeHoistProps(filterGroup)
+            },
+            await getDrilldownFilters({
+              drilldown: filter.columns,
+              groups: columns,
+            }),
+          ),
+        ]),
+    filters
+  ))
 
-  rowFilters =  _.map(_.map((filterGroup)=>{
-    hoistProps = mergeHoistProps(hoistProps, filterGroup)
-    return removeHoistProps(filterGroup)
-  }), rowFilters)
-
-  let columnFilters = await compactMapAsync(
-    async filter =>
-      await getDrilldownFilters({
-        drilldown: filter.columns,
-        groups: columns,
-      }),
-    filters 
-  )
-
-  columnFilters = _.map(_.map((filterGroup)=>{
-    hoistProps = mergeHoistProps(hoistProps, filterGroup)
-    return removeHoistProps(filterGroup)
-  }), columnFilters)
-
-  let boolFilter = or(
-    and([
-      rowFilters,
-      columnFilters,
-    ])
-  )
-
-  return  {
+  return {
     hoistProps,
-    ...boolFilter
+    ...boolFilter,
   }
 }
 

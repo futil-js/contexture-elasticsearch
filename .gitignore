@@ -18,3 +18,5 @@ lint-results.json
 !.yarn/versions
 
 .vscode/settings.json
+
+.vscode/
