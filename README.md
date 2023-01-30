@@ -1,4 +1,6 @@
-﻿# contexture-elasticsearch
+> :warning: **Development has moved to the [contexture monorepo](https://github.com/smartprocure/contexture)**: This package lives in https://github.com/smartprocure/contexture/tree/master/packages/provider-elasticsearch
+
+# contexture-elasticsearch
 Elasticsearch Provider for Contexture
 
 ## Usage
