@@ -3380,7 +3380,7 @@ describe('pivot', () => {
           },
         ],
       },
-      "hoistProps": {},
+      hoistProps: {},
     }
     let result = await filter(
       input,

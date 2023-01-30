@@ -563,12 +563,12 @@ let filter = async (node, schema) => {
 
   hoistProps = {}
 
-  let boolFilter =  or(
-   await compactMapAsync(
-    async filter =>
+  let boolFilter = or(
+    await compactMapAsync(
+      async filter =>
         and([
           _.map(
-            (filterGroup) => {
+            filterGroup => {
               hoistProps = mergeHoistProps(hoistProps, filterGroup)
               return removeHoistProps(filterGroup)
             },
@@ -577,18 +577,20 @@ let filter = async (node, schema) => {
               groups: rows,
             })
           ),
-          _.map(filterGroup => {
+          _.map(
+            filterGroup => {
               hoistProps = mergeHoistProps(hoistProps, filterGroup)
               return removeHoistProps(filterGroup)
             },
             await getDrilldownFilters({
               drilldown: filter.columns,
               groups: columns,
-            }),
+            })
           ),
         ]),
-    filters
-  ))
+      filters
+    )
+  )
 
   return {
     hoistProps,
