@@ -6,8 +6,9 @@ let {
   writeTreeNode,
   transmuteTree,
   virtualConcat,
+  mapTreePostOrder,
 } = require('../../src/utils/futil')
-let { simplifyBucket } = require('../../src/utils/elasticDSL')
+let { simplifyBucket, basicSimplifyTree } = require('../../src/utils/elasticDSL')
 
 describe('futil candidates', () => {
   it('maybeAppend should work', () => {
@@ -273,6 +274,185 @@ describe('futil candidates', () => {
             { key: 'inner2', min: 12, someValue: 3 },
           ],
         },
+      ],
+    })
+  })
+
+  let columnResponse = require('../example-types/metricGroups/pivotData/columnResponse')
+  // WIP HERE APPARENTLLY
+  /// -----------------
+  ///-------------------------
+  it('transmuteTree should simplify groups.buckets in tree with rows and columns AND track path', () => {
+    let tree = {
+      key: 'root',
+      groups: {
+        buckets: [
+          {
+            key: 'row1',
+            groups: { buckets: [{ key: 'thing' }, { key: 'thing2' }] },
+            columns: {
+              buckets: [
+                {
+                  key: 'innermost',
+                  columns: {
+                    buckets: [
+                      {
+                        key: 'colbucket',
+                        valueFilter: {
+                          columns: { buckets: [{ key: 'specialInner' }] },
+                        },
+                      },
+                    ],
+                  },
+                },
+                { key: 'inner2', min: { value: 12 }, some_value: 3 },
+              ],
+            },
+          },
+        ],
+      },
+      columns: {
+        buckets: [
+          {
+            key: 'innermostC',
+            columns: {
+              buckets: [
+                {
+                  key: 'colbucket',
+                  valueFilter: {
+                    columns: { buckets: [{ key: 'specialInner' }] },
+                  },
+                },
+              ],
+            },
+          },
+          { key: 'inner2C', min: { value: 12 }, some_value: 3 },
+        ],
+      },
+    }
+    // tree = columnResponse.aggregations
+
+    // Depth is row depth UNTIL we hit column, then reset count
+    let getDepth = (parents = [], node) => {
+      let columnDepth = _.findIndex('isColumn', [..._.reverse(parents), node])
+      let isColumn = columnDepth != -1
+      let depth = parents.length
+      if (isColumn) depth -= columnDepth
+      return { depth, isColumn, columnDepth, pl: parents.length }
+      // Tests:
+
+      // [r, r, c, n]
+      // cd 2, pl 3
+      // dt: 3 - 2 / 1
+
+      /// [r, r, c, r, n]
+      // cd 2 pl 4
+      // dt = 4-2 =2
+
+      /// [r, r, r, nc]
+      // cd 3
+      // pl 3
+      // dt = 3-3 = 0 [x]
+    }
+    let isColumn = (i, [parent]) => {
+      // groupCache is because we wipe groups
+      if (parent && parent.groups)
+        // needs _.get because there might ONLY be columns and no groups
+        return (
+          i >= _.getOr(0, 'buckets.length', parent.groupCache || parent.groups)
+        )
+    }
+    let customTraversals = {
+      columns: [null, x => x.valueFilter.columns.buckets],
+    }
+    let customCleanups = {
+      columns: [
+        null,
+        x => {
+          delete x.valueFilter
+        },
+      ],
+    }
+    let traverseSource = (node, i, parents = [], parentIndexes = []) => {
+      node.isColumn = isColumn(i, parents)
+      let depth = getDepth(parents, node)
+      // Allow depth specific traversals
+      let customTraverse = customTraversals.columns[depth.depth]
+      if (depth.isColumn && customTraverse) return customTraverse(node)
+
+      return virtualConcat(
+        _.getOr([], 'groups.buckets', node),
+        _.getOr([], 'columns.buckets', node)
+      )
+    }
+
+    let traverseTarget = node => virtualConcat(node.groups, node.columns)
+
+    let cleanup = node => {
+      // groups needs to be the right length or virtualConcat will put everything in columns since the cut off for determining when to go to arr2 would be 0 if arr1 is size 0
+      if (!_.isArray(node.groups)) {
+        node.groupCache = node.groups
+        node.groups = Array(_.get('groups.buckets.length', node))
+      }
+      if (!_.isArray(node.columns)) node.columns = []
+    }
+
+    let simplifyGroups = transmuteTree(traverseSource, traverseTarget, cleanup)
+
+    // Cleanup intermediate stuff like isColumn and groupCache.
+    let postSimplify = mapTreePostOrder(traverseTarget)((node, i, parents) => {
+      let { depth, isColumn } = getDepth(parents, node)
+
+      // Allow depth specific cleanup, e.g. wiping valueFilter
+      if (isColumn) F.maybeCall(customCleanups.columns[depth], node)
+
+      delete node.isColumn
+      delete node.groupCache
+      if (_.isEmpty(node.groups)) delete node.groups
+      if (_.isEmpty(node.columns)) delete node.columns
+      return node
+    })
+
+    // TODO: can we simplify? specifically, can we avoid a second pass?
+    //      can we have one "cleanup" concept?
+    //      can we do this without writing groupsCache and then deletign?
+    //          this one seems really doable since groupscache is only needed because we're writing groups as we go
+    //          parent's groups get overwritten after first pass i think
+    //          can we operate on a clone but iterate on source?
+    // TODO: apply to pivot itself
+    // TODO: add unit tests using real req/res
+
+    let bucketSimplified = simplifyGroups(simplifyBucket, tree)
+    // console.log(JSON.stringify({ bucketSimplified }, 0, 2))
+
+    bucketSimplified = postSimplify(bucketSimplified)
+    console.log(JSON.stringify({ bucketSimplified }, 0, 2))
+
+    /// TODO: efff this, have we been wasting time?
+    bucketSimplified = basicSimplifyTree(tree)
+    console.log(JSON.stringify({ bucketSimplified }, 0, 2))
+
+    expect(bucketSimplified).to.deep.equal({
+      key: 'root',
+      groups: [
+        {
+          key: 'row1',
+          groups: [{ key: 'thing' }, { key: 'thing2' }],
+          columns: [
+            {
+              key: 'innermost',
+              columns: [{ key: 'colbucket', columns: [{ key: 'specialInner' }] }],
+            },
+            { key: 'inner2', min: 12, someValue: 3 },
+          ],
+        },
+      ],
+      columns: [
+        {
+          key: 'innermostC',
+          columns: [{ key: 'colbucket', columns: [{ key: 'specialInner' }] }],
+        },
+        { key: 'inner2C', min: 12, someValue: 3 },
       ],
     })
   })
